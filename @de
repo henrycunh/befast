@@ -1,0 +1,37 @@
+#!/usr/bin/env haxx
+
+const [service, ...command]  = process.argv.slice(3)
+
+if (service === undefined || command.length === 0) {
+    console.log(style`[Usage:](bold) @de [<service>](blue) [<command>](blue)`)
+    process.exit()
+}
+
+const getCompose = async() => {
+    try {
+        return await read.yaml`docker-compose.yml`
+    } catch (e) {
+        console.log(style`No [docker-compose.yml](blue.bold) file found.`)
+        process.exit()
+    }
+}
+
+const getServiceContainerName = (service, compose) => {
+    service = service === '--' ? Object.keys(compose.services).shift() : service
+
+    if (!(service in compose.services)) {
+        console.log(style`No service with the name [${service}](blue.bold) was found`)
+        process.exit()
+    }
+
+    if (!('container_name' in compose.services[service])) {
+        console.log(style`The service [${service}](blue.bold) doesn't have a [container_name](bold) property`)
+        process.exit()
+    }
+
+    return compose.services[service].container_name
+}
+
+const compose = await getCompose()
+const containerName = getServiceContainerName(service, compose)
+await $`docker exec -it ${containerName} ${command}`
